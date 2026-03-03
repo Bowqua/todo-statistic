@@ -16,6 +16,9 @@ function processCommand(command) {
         case 'exit':
             process.exit(0);
             break;
+        case 'show':
+            console.log(getAllComments(files));
+            break;
         default:
             console.log('wrong command');
             break;
