@@ -22,4 +22,18 @@ function processCommand(command) {
     }
 }
 
-// TODO you can do it!
+function getAllComments(files) {
+    let comments = [];
+
+    files.forEach(file => {
+        const lines = file.split('\n');
+
+        for (const line of lines) {
+            const trimmed = line.trim();
+            if (trimmed.startsWith('// TODO ')) {
+                comments.push(trimmed.slice(8));
+            }
+        }
+    })
+    return comments;
+}
