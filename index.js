@@ -11,9 +11,14 @@ function getFiles() {
     return filePaths.map(path => readFile(path));
 }
 
+function render(todo) {
+    const userPart = todo.user ? `${todo.user}; ` : '';
+    const datePart = todo.date ? `${todo.date}; ` : '';
+    return `// TODO ${userPart}${datePart}${todo.text}`;
+}
+
 function processCommand(command) {
     const comments = getAllComments(files);
-    switch (command) {
     const trimmed = command.trim();
     const spaceIndex = trimmed.indexOf(' ');
     const head = spaceIndex === -1 ? trimmed : trimmed.slice(0, spaceIndex);
@@ -24,77 +29,48 @@ function processCommand(command) {
             process.exit(0);
             break;
         case 'show':
-            comments.forEach(comment => {
-                console.log(comment)
-            })
-            break;
-        case 'sort importance':
-            let copy = structuredClone(comments);
-            const importanceSorted = copy.sort((a, b) => {
-                const countA = (a.match('/!/g') || []).length;
-                const countB = (b.match('/!/g') || []).length;
-                return countB - countA;
-            });
-            importanceSorted.forEach(comment => {
-                console.log(comment)
-            })
-            break;
-        case 'sort user':
-            let userComments = structuredClone(comments);
-            let objs = [];
-            userComments.forEach(comment => {
-                let line = comment.split(';');
-                let obj = {
-                    name: line[0],
-                    other: line.slice(1)
-                }
-                objs.push(obj);
-            })
-            const grouped = Object.groupBy(objs, (obj) => obj.name);
-            for (const key in grouped) {
-                console.log(`${key}:`);
-                grouped[key].forEach(obj => {
-                    console.log(`${obj.other.join(',')}`);
-                });
-            }
-            break;
-        case 'sort date':
-            let dateComments = structuredClone(comments);
-            let dobjs = [];
-            dateComments.forEach(comment => {
-                let line = comment.split(';');
-                let obj = {
-                    date: line[1],
-                    other: line
-                }
-                dobjs.push(obj);
-            })
-            const sorted = dobjs.sort((a, b) => {
-                const dateA = a.date ? a.date.trim() : '';
-                const dateB = b.date ? b.date.trim() : '';
-                if (dateA === '' && dateB !== '') return 1;
-                if (dateA !== '' && dateB === '') return -1;
-                return dateA.localeCompare(dateB);
-            })
-            sorted.forEach(obj => {
-                console.log(obj)
-            })
+            comments.forEach(c => console.log(render(c)));
             break;
         case 'important':
-            const comments = getAllComments(files);
-            const importantComments = comments.filter(todo => todo.text.includes('!'));
-            for (const comment of importantComments) {
-                console.log(comment);
-            }
+            comments
+                .filter(c => c.text.includes('!'))
+                .forEach(c => console.log(render(c)));
             break;
         case 'user':
-            const todos = getAllComments(files);
-            const username = arguments.toLowerCase();
-            const filtered = todos.filter(item => (item.user || '').toLowerCase() === username);
-
-            filtered.forEach(data => console.log(`${data.user}; ${data.date}: ${data.text}`));
+            const nameToSearch = arguments.toLowerCase();
+            comments
+                .filter(c => c.user && c.user.toLowerCase() === nameToSearch)
+                .forEach(c => console.log(render(c)));
             break;
-
+        case 'sort':
+            let sorted = [...comments];
+            if (arguments === 'importance') {
+                sorted.sort((a, b) => {
+                    const countA = (a.text.match(/!/g) || []).length;
+                    const countB = (b.text.match(/!/g) || []).length;
+                    return countB - countA;
+                });
+                sorted.forEach(c => console.log(render(c)));
+            } else if (arguments === 'user') {
+                const grouped = {};
+                comments.forEach(c => {
+                    const name = (c.user || 'anonymous').toLowerCase();
+                    if (!grouped[name]) grouped[name] = [];
+                    grouped[name].push(c);
+                });
+                Object.keys(grouped).sort().forEach(user => {
+                    console.log(`${user}:`);
+                    grouped[user].forEach(c => console.log('  ' + render(c)));
+                });
+            } else if (arguments === 'date') {
+                sorted.sort((a, b) => {
+                    const dateA = a.date || '0000-00-00';
+                    const dateB = b.date || '0000-00-00';
+                    return dateB.localeCompare(dateA);
+                });
+                sorted.forEach(c => console.log(render(c)));
+            }
+            break;
         default:
             console.log('wrong command');
             break;
